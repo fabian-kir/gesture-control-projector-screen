@@ -1,0 +1,10 @@
+opencv-python
+numpy
+pygame
+pyautogui
+win32gui
+win32con
+win32api
+
+math
+threading
