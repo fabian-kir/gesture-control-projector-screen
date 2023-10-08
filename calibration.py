@@ -16,7 +16,9 @@ class SelectCorners:
 
         #size = (screeninfo.get_monitors()[0].width, screeninfo.get_monitors()[0].height)
         size = C.MONITOR_RESOLUTION
+        pyg.display.set_caption('Select the 4 corners --- | Oben-Links -> Unten-Links |')
         self.screen = pyg.display.set_mode(size)
+
 
         src_img = cv2.cvtColor(src_img, cv2.COLOR_BGR2RGB)
         self.img = pyg.image.frombuffer(src_img.tostring(), src_img.shape[1::-1], "RGB")
