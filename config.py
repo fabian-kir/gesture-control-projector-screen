@@ -26,4 +26,3 @@ PRESENTATION_ACTION_AREA_HEIGHT = .2 # % amount of the screen at the top where n
 #Presentation Mode:
 PRESENTATION_LINK = "" # link to a public presentation
 PRESENTATION_TOOL = None # one of "KEYNOTE";
-
