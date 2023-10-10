@@ -19,10 +19,10 @@ GESTURE_DETECTION_TOLERANCE = 1.83
 HAND_CURSOR_CLICK_DISTANCE = 250 #in px
 
 
+#Presentation Mode:
 PRESENTATION_MODE = False
 PRESENTATION_ACTION_AREA_WIDTH = .15 # % amount of the screen at the left and right end (each) where next or previous slide actions are recognized
 PRESENTATION_ACTION_AREA_HEIGHT = .2 # % amount of the screen at the top where next or previous slide actions are recognized
 
-#Presentation Mode:
 PRESENTATION_LINK = "" # link to a public presentation
 PRESENTATION_TOOL = None # one of "KEYNOTE";
