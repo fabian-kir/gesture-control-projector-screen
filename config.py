@@ -1,7 +1,8 @@
+MODE = "standard" # ["standard", "presentation"]
 DEBUG = False
 
 MONITOR = 0 # Falls mehrere Monitore an den Computer angeschlossen sind, muss diese Zahl ggf. angepasst werden
-IRIUN_CAMERA_NO = 2
+IRIUN_CAMERA_NO = 1
 
 MONITOR_RESOLUTION = (3840, 2160)
 
@@ -20,7 +21,6 @@ HAND_CURSOR_CLICK_DISTANCE = 250 #in px
 
 
 #Presentation Mode:
-PRESENTATION_MODE = False
 PRESENTATION_ACTION_AREA_WIDTH = .15 # % amount of the screen at the left and right end (each) where next or previous slide actions are recognized
 PRESENTATION_ACTION_AREA_HEIGHT = .2 # % amount of the screen at the top where next or previous slide actions are recognized
 

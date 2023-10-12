@@ -1,5 +1,4 @@
 import config as C
-import tkinter as tk
 import pyautogui
 import math
 import pygame as pyg
@@ -69,9 +68,45 @@ class TransparentWindow:
 
     def update_hand_position(self, hand_pos):
         if hand_pos is None:
-            self.hand_position = None
+            return
 
         self.hand_position = hand_pos
         r = math.dist(hand_pos, pyautogui.position())
 
         pyg.draw.circle(self.aux_surface, self.BLUE, pyautogui.position(), r, 10)
+
+
+
+class ScreenOverlay(threading.Thread):
+    def __init__(self, data_queue):
+        super().__init__()
+        self.data_queue = data_queue
+        self.latest = None
+
+    def run(self):
+        while True:
+            # get data
+            self.latest = self.data_queue.get(block=True)
+
+
+    def draw_ring(self, pos, radius, color):
+        pass
+
+    def draw_highlighter(self, pos, radius):
+        pass
+
+    def draw_distance_ring(self, pos, radius):
+        pass
+
+    def erase(self):
+        pass
+
+    def unpack(self, data):
+        self.highlighter_ring_pos = None
+        self.distance_ring_pos = None
+        self.distance_ring_radius = None
+        self.is_clicked = None
+        # TODO add check for if theres an error and the script must stop
+
+
+

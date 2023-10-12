@@ -6,7 +6,7 @@ from calibration import Calibration
 from cameras import IriunCameraInput
 from filterapp import TransparentWindow
 from screen import ScreenInput
-from perform_onscreen_actions import MouseController
+from perform_onscreen_actions import Controller
 
 
 class Main:
@@ -18,7 +18,7 @@ class Main:
         self.calibration = Calibration(camera_sources=self.cameras)
         self.transformation = self.calibration()
 
-        self.mouse_control = MouseController()
+        self.mouse_control = Controller()
 
         self.fingertip_detector = processing.HandDetector(self.cameras[0].resolution, self.transformation)
 
@@ -31,8 +31,8 @@ class Main:
                 img = camera()
                 transformed_fingertips = self.fingertip_detector(img)
 
-                self.mouse_control.move_to(transformed_fingertips[0])
-                self.mouse_control.check_user_clicked(transformed_fingertips[1])
+                self.mouse_control.update_left_hand(transformed_fingertips[0])
+                self.mouse_control.update_right_hand(transformed_fingertips[1])
 
                 self.transparent_window.update_hand_position(transformed_fingertips[1])
 
