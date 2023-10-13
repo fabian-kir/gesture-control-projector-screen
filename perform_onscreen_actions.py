@@ -1,8 +1,15 @@
+import multiprocessing
+
 import pyautogui
 import math
 import config as C
+from filterapp import ScreenOverlay
+from multiprocessing import Queue
+from queue import Full
+import warnings
 
 pyautogui.FAILSAFE = False
+
 
 # class MouseController:
 #     def __init__(self):
@@ -81,7 +88,9 @@ class Controller:
                 return _PresentationMode()
 
             case _:
-                raise Exception(f"The given mode {C.MODE} is not available. Please check config.py to see all available options.")
+                raise Exception(
+                    f"The given mode {C.MODE} is not available. Please check config.py to see all available options.")
+
 
 class _StandardMode:
     def __init__(self):
@@ -92,13 +101,16 @@ class _StandardMode:
         self.is_hand_detected = {"left": False, "right": False}
         self.is_hand_on_screen = {"left": False, "right": False}
 
+        self.command_queue = Queue(maxsize=C.COMMAND_QUEUE_MAXSIZE)
+        self.overlay = ScreenOverlay(self.command_queue)
+
+        self.overlay.start()
 
     @staticmethod
     def is_pos_onscreen(pos):
         if pos[0] < 0 or pos[1] < 0 or pos[0] > C.MONITOR_RESOLUTION[0] or pos[1] > C.MONITOR_RESOLUTION[1]:
             return False
         return True
-
 
     def update_left_hand(self, pos):
         if pos is None:
@@ -117,9 +129,9 @@ class _StandardMode:
             return
 
         self.left_hand_pos = pos
-        self.is_hand_detected["left"] = self.is_hand_on_screen["left"] = True 
+        self.is_hand_detected["left"] = self.is_hand_on_screen["left"] = True
         self.update()
-        
+
     def update_right_hand(self, pos):
         if pos is None:
             self.is_hand_detected["right"] = False
@@ -137,11 +149,28 @@ class _StandardMode:
             return
 
         self.right_hand_pos = pos
-        self.is_hand_detected["right"] = self.is_hand_on_screen["right"] = True 
+        self.is_hand_detected["right"] = self.is_hand_on_screen["right"] = True
         self.update()
 
+    def feed_overlay(self, commands=()):
+        sending = [
+            ('highlighter_pos', self.left_hand_pos),
+            ('highlighter_state', self.mouse_pressed),
+            ('second_hand_pos', self.right_hand_pos)
+        ]
+
+        if len(commands):
+            sending += commands
+
+        try:
+            for command in sending:
+                self.command_queue.put(command, block=False)
+        except Full:
+            warnings.warn("WARNING: The command Queue has run out of capacity.", UserWarning)
 
     def update(self):
+        self.feed_overlay()
+
         # left hand:
         if self.is_hand_on_screen["left"]:
             # Move cursor to hand pos:
@@ -169,39 +198,39 @@ class _StandardMode:
             if not self.mouse_pressed:  # Only press the mouse button if it's currently not pressed
                 pyautogui.mouseDown()
                 self.mouse_pressed = True
-                
+
         # Maybe update onscreen hand position - should be merged into this class at least
+
+    def __del__(self):
+        self.command_queue.put(('stop', ))
+
 class _PresentationMode(_StandardMode):
     def __init__(self):
         super().__init__()
-        
+
         self.next_button_pressed = False
         self.previous_button_pressed = False
-        
 
     def update(self):
-        if False in (self.is_hand_on_screen.values() + self.is_hand_detected.values()): # both hands must be detected and onscreen for anything to happen
+        if False in (
+                list(self.is_hand_on_screen.values()) + list(self.is_hand_detected.values())):  # both hands must be detected and onscreen for anything to happen
             distance = math.dist(self.left_hand_pos, self.right_hand_pos)
             if distance < C.HAND_CURSOR_CLICK_DISTANCE:
                 # Hands make a click - now check if they click on nextslide, previousslide or none of both
 
-                if 0 < self.left_hand_pos[0] < C.MONITOR_RESOLUTION[0]*C.PRESENTATION_ACTION_AREA_WIDTH and \
-                    0 < self.left_hand_pos[1] < C.MONITOR_RESOLUTION[1]*C.PRESENTATION_ACTION_AREA_HEIGHT:
+                if 0 < self.left_hand_pos[0] < C.MONITOR_RESOLUTION[0] * C.PRESENTATION_ACTION_AREA_WIDTH and \
+                        0 < self.left_hand_pos[1] < C.MONITOR_RESOLUTION[1] * C.PRESENTATION_ACTION_AREA_HEIGHT:
                     self.previous_slide()
 
-                elif C.MONITOR_RESOLUTION[0] * (1 - C.PRESENTATION_ACTION_AREA_WIDTH) < self.left_hand_pos < C.MONITOR_RESOLUTION[0] and \
-                    0 < self.left_hand_pos[1] < C.MONITOR_RESOLUTION[1]*C.PRESENTATION_ACTION_AREA_HEIGHT:
+                elif C.MONITOR_RESOLUTION[0] * (1 - C.PRESENTATION_ACTION_AREA_WIDTH) < self.left_hand_pos < \
+                        C.MONITOR_RESOLUTION[0] and \
+                        0 < self.left_hand_pos[1] < C.MONITOR_RESOLUTION[1] * C.PRESENTATION_ACTION_AREA_HEIGHT:
                     self.next_slide()
 
     def previous_slide(self):
-        pass # TODO
+        pass  # TODO
 
     def next_slide(self):
-        pass # TODO
-
-
-
+        pass  # TODO
 
 # TODO make 2 classes for the control one for presentation mode and one for normal mode ( potentially one base class )
-
-

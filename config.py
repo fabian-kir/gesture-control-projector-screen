@@ -16,9 +16,15 @@ GESTURE_DETECTION_CONTEXT_LEN = 12
 MINIMAL_GESTURE_DETECTION_POINTS = 4
 GESTURE_DETECTION_TOLERANCE = 1.83
 
-
 HAND_CURSOR_CLICK_DISTANCE = 250 #in px
 
+# Overlay Style:
+MAIN_ACTIVE_COLOR = (255, 0, 0)
+MAIN_INACTIVE_COLOR = (0, 255, 255)
+SECOND_COLOR = (0, 0, 255)
+LINE_WIDTH = 5
+
+COMMAND_QUEUE_MAXSIZE = 5
 
 #Presentation Mode:
 PRESENTATION_ACTION_AREA_WIDTH = .15 # % amount of the screen at the left and right end (each) where next or previous slide actions are recognized
