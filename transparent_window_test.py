@@ -67,9 +67,6 @@ class LayeredWindow:
     def update(self):
         win32gui.SetLayeredWindowAttributes(self.hwnd, self.transparent_color, 0, win32con.LWA_COLORKEY)
 
-    def erase(self):
-        pass  # Implement as needed.
-
     def fill_transparent(self):
         hdc = win32gui.GetDC(self.hwnd)
         brush = win32gui.CreateSolidBrush(self.transparent_color)
