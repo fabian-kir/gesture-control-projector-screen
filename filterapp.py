@@ -91,10 +91,6 @@ class ScreenOverlay(multiprocessing.Process):
 
         self.draw()
 
-    def erase(self):
-        pass
-    #TODO: delete after draw got reworked
-
     def fill_transparent(self):
         # Fill the window with magenta color before showing
         hdc = win32gui.GetDC(self.hwnd)
