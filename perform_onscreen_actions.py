@@ -89,7 +89,8 @@ class Controller:
 
             case _:
                 raise Exception(
-                    f"The given mode {C.MODE} is not available. Please check config.py to see all available options.")
+                    f"The given mode {C.MODE} is not available. Please check config.py to see all available options."
+                )
 
 
 class _StandardMode:
@@ -128,7 +129,7 @@ class _StandardMode:
             self.update()
             return
 
-        self.left_hand_pos = pos
+        self.left_hand_pos = (int(a) for a in pos)
         self.is_hand_detected["left"] = self.is_hand_on_screen["left"] = True
         self.update()
 
@@ -148,7 +149,7 @@ class _StandardMode:
             self.update()
             return
 
-        self.right_hand_pos = pos
+        self.left_hand_pos = (int(a) for a in pos)
         self.is_hand_detected["right"] = self.is_hand_on_screen["right"] = True
         self.update()
 

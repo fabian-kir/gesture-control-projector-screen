@@ -24,7 +24,7 @@ MAIN_INACTIVE_COLOR = (0, 255, 255)
 SECOND_COLOR = (0, 0, 255)
 LINE_WIDTH = 5
 
-COMMAND_QUEUE_MAXSIZE = 5
+COMMAND_QUEUE_MAXSIZE = 10
 
 #Presentation Mode:
 PRESENTATION_ACTION_AREA_WIDTH = .15 # % amount of the screen at the left and right end (each) where next or previous slide actions are recognized

@@ -29,5 +29,8 @@ class Main:
 
                 self.mouse_control.update_left_hand(transformed_fingertips[0])
                 self.mouse_control.update_right_hand(transformed_fingertips[1])
-main = Main()
-main()
+
+if __name__ == "__main__":
+    print("main here")
+    main = Main()
+    main()

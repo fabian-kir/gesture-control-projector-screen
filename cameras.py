@@ -7,6 +7,8 @@ class IriunCameraInput:
     def __init__(self):
         with self as camera:
             _ = camera.__call__()
+
+        assert not (_ is None)
         self.width = _.shape[1]
         self.height = _.shape[0]
         self.resolution = (self.width, self.height)

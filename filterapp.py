@@ -4,7 +4,6 @@ import multiprocessing
 from collections import namedtuple
 from custom_utils import find_ring_intersection
 from time import sleep
-import ctypes
 
 class ScreenOverlay(multiprocessing.Process):
     @staticmethod
@@ -51,6 +50,7 @@ class ScreenOverlay(multiprocessing.Process):
         return hwnd
 
     def run(self):
+        print("seperate process started")
         while True:
             # get data
             latest = self.data_queue.get(block=True)
@@ -105,7 +105,7 @@ class ScreenOverlay(multiprocessing.Process):
         # draw objects:
 
         # draw highlighter ring:
-        if self.highlighter_pos:
+        if not (self.highlighter_pos is None):
             self.draw_ring(
                 pos=self.highlighter_pos,
                 radius=C.HAND_CURSOR_CLICK_DISTANCE,
@@ -118,7 +118,6 @@ class ScreenOverlay(multiprocessing.Process):
             assert self.second_hand_pos[0] and self.second_hand_pos[1]  # if the code works this shouldn't be thrown ever ...
 
             endpos = tuple(int(x) for x in (find_ring_intersection(self.second_hand_pos, self.highlighter_pos, C.HAND_CURSOR_CLICK_DISTANCE)))
-            print(endpos)
             self.draw_line(
                 start_pos=self.second_hand_pos,
                 end_pos=tuple(int(x) for x in (find_ring_intersection(self.second_hand_pos, self.highlighter_pos, C.HAND_CURSOR_CLICK_DISTANCE))),
@@ -127,6 +126,7 @@ class ScreenOverlay(multiprocessing.Process):
             )
 
     def draw_ring(self, pos, radius, thickness, color):
+        pos = tuple(int(a) for a in pos)
         hdc = win32gui.GetDC(self.hwnd)
 
         brush = win32gui.CreateSolidBrush(color)
@@ -149,6 +149,9 @@ class ScreenOverlay(multiprocessing.Process):
         win32gui.ReleaseDC(self.hwnd, hdc)
 
     def draw_line(self, start_pos, end_pos, thickness, color):
+        start_pos = tuple(int(a) for a in start_pos)
+        end_pos = tuple(int(a) for a in end_pos)
+
         hdc = win32gui.GetDC(self.hwnd)
 
         brush = win32gui.CreateSolidBrush(color)
@@ -160,9 +163,9 @@ class ScreenOverlay(multiprocessing.Process):
         win32gui.ReleaseDC(self.hwnd, hdc)
 
 
-from multiprocessing import Queue
-
 def debug_screen_overlay():
+    from multiprocessing import Queue
+
     debug_queue = Queue()
     overlay = ScreenOverlay(debug_queue)
 
