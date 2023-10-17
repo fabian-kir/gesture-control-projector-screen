@@ -26,3 +26,41 @@ def find_ring_intersection(start_point, circle_center, circle_radius):
         return (intersection_x1, intersection_y1)
     else:
         return (intersection_x2, intersection_y2)
+
+
+class EventListener:
+    def __init__(self, value=None, bind=None):
+        self._value = value
+
+        if bind is not None:
+            assert callable(bind), "The provided bind argument must be callable"
+            self._bindings = [bind, ]
+        else:
+            self._bindings = []
+
+    def __call__(self, value):
+        self.value = value
+        return self.value
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        if value == self._value:
+            return
+
+        self._value = value
+        for binding in self._bindings:
+            binding(value)
+
+    def bind(self, bind):
+        assert callable(bind)
+        self._bindings.append(bind)
+
+    def unbind(self, bind):
+        self._bindings.remove(bind)
+
+    def bindings(self):
+        return self._bindings

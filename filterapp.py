@@ -37,6 +37,7 @@ class _ScreenOverlay:
         self.highlighter_pos = (200, 200) # TODO: set to None at start
         self.highlighter_state = False  # False for non-clicked, True for clicked
         self.second_hand_pos = False
+        self.highlighter_visible = True # TODO implement
 
         self.transparent_color = win32api.RGB(1, 1, 1)  # Example: Magenta as transparent color
         self.hwnd = self.create_window()
@@ -105,6 +106,9 @@ class _ScreenOverlay:
 
             case 'second_hand_pos', value:
                 self.second_hand_pos = value
+
+            case 'highlighter_visible', value:
+                self.highlighter_visible = bool(value)
 
             case 'stop', _:
                 raise SystemExit(f"Thread {multiprocessing.current_process().name} exited due to a stop command.")

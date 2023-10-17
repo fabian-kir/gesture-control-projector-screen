@@ -7,6 +7,7 @@ from filterapp import ScreenOverlayProcess
 from multiprocessing import Queue
 from queue import Full
 import warnings
+from custom_utils import EventListener
 
 pyautogui.FAILSAFE = False
 
@@ -97,10 +98,11 @@ class _StandardMode:
     def __init__(self):
         self.mouse_pressed = False
 
-        self.left_hand_pos = (-1, -1)
-        self.right_hand_pos = (-1, -1)
-        self.is_hand_detected = {"left": False, "right": False}
-        self.is_hand_on_screen = {"left": False, "right": False}
+        self._left_hand_pos = EventListener(None, bind=self.lefthand_onchange)
+        self._right_hand_pos = EventListener(None, bind=self.righthand_onchange)
+
+        self.left_hand_detected = EventListener(0, self.lefthanddetected_onchange)
+        self.right_hand_detected = EventListener(0, self.righthanddetected_onchange) # -1 means its detected, otherwise amount of detection fails in a row
 
         self.command_queue = Queue(maxsize=C.COMMAND_QUEUE_MAXSIZE)
         self.overlay = ScreenOverlayProcess(self.command_queue)
@@ -113,47 +115,75 @@ class _StandardMode:
             return False
         return True
 
-    def update_left_hand(self, pos):
-        if pos is None:
-            self.is_hand_detected["left"] = False
-            # Note: we don't uncheck is_hand_on_screen as it may be that the hand is still on screen whilst there was a frame where the detection didn't work
-            # - might however lead to problems due to the hand fully disappearing from the camera image
-            return
+    @property
+    def left_hand_pos(self):
+        return self._left_hand_pos
 
-        assert not (None in pos)
+    @left_hand_pos.setter
+    def left_hand_pos(self, pos):
+        if not (pos is None):
+            assert not (None in pos)
 
-        if not self.is_pos_onscreen(pos):
-            self.is_hand_detected["left"] = True
-            self.is_hand_on_screen["left"] = False
-            self.left_hand_pos = tuple(int(a) for a in pos)
-            self.update()
-            return
+        pos = tuple(int(val) for val in pos)
+        self.left_hand_pos.value = pos
 
-        self.left_hand_pos = tuple(int(a) for a in pos)
-        self.is_hand_detected["left"] = self.is_hand_on_screen["left"] = True
-        self.update()
+    @property
+    def right_hand_pos(self):
+        return self._right_hand_pos
 
-    def update_right_hand(self, pos):
-        if pos is None:
-            self.is_hand_detected["right"] = False
-            # Note: we don't uncheck is_hand_on_screen as it may be that the hand is still on screen whilst there was a frame where the detection didn't work
-            # - might however lead to problems due to the hand fully disappearing from the camera image
-            return
+    @right_hand_pos.setter
+    def right_hand_pos(self, pos):
+        if not (pos is None):
+            assert not (None in pos)
 
-        assert not (None in pos)
+        pos = tuple(int(val) for val in pos)
+        self.left_hand_pos.value = pos
 
-        if not self.is_pos_onscreen(pos):
-            self.is_hand_detected["right"] = True
-            self.is_hand_on_screen["right"] = False
-            self.right_hand_pos = tuple(int(a) for a in pos)
-            self.update()
-            return
+    @property
+    def hand_detection_failed_count(self):
+        return self.hand_detection_failed_count
 
-        self.right_hand_pos = tuple(int(a) for a in pos)
-        self.is_hand_detected["right"] = self.is_hand_on_screen["right"] = True
-        self.update()
+    @hand_detection_failed_count.setter
+    def hand_detection_failed_count(self, value):
+        if value >= C.INAROW_HAND_DETECTION_FAILS:
 
-    def feed_overlay(self, commands=()):
+
+    def lefthand_onchange(self, val):
+        # hand was moved!
+
+        if val is None:
+            # no hand was detected
+            self.left_hand_detected.value += 1
+
+        else:
+            # hand was detected somewhere
+            self.left_hand_detected.value = -1
+
+            if self.is_pos_onscreen(val):
+                # hand was detected and is on screen:
+                self.command_queue.put(('highlighter_pos', val))
+                pyautogui.moveTo(*val)
+            else:
+                # hand detected outside screen:
+                pass
+
+
+    def lefthanddetected_onchange(self, val):
+        # hand was new detected:
+        if val == -1:
+            self.send_command(('highlighter_visible', True))
+
+        elif val > C.INAROW_HAND_DETECTION_FAILS:
+            self.send_command(('highlighter_visible', False))
+            pyautogui.mouseUp()
+
+    def righthand_onchange(self, val):
+    # right hand was moved:
+
+
+
+    def send_command(self, command):
+    def feed_overlay(self, commands=()): # outdated, from now on send_command will do that
         sending = [
             ('debug_draw', None),
             ('highlighter_pos', self.left_hand_pos),
@@ -171,41 +201,9 @@ class _StandardMode:
         except Full:
             warnings.warn("WARNING: The command Queue has run out of capacity.", UserWarning)
 
-    def update(self):
-        self.feed_overlay()
-
-        # left hand:
-        if self.is_hand_on_screen["left"]:
-            # Move cursor to hand pos:
-            pyautogui.moveTo(*self.left_hand_pos)
-
-        # right hand:
-        cursor_pos = pyautogui.position()
-
-        if self.is_hand_detected["right"]:
-            distance = math.dist(self.right_hand_pos, cursor_pos)
-        else:
-            return
-
-        if self.is_hand_on_screen:
-            # no right hand detected or not onscreen:
-            pyautogui.mouseUp()
-            self.mouse_pressed = False
-            return
-
-        if distance > C.HAND_CURSOR_CLICK_DISTANCE:
-            if self.mouse_pressed:  # Only release the mouse button if it's currently pressed
-                pyautogui.mouseUp()
-                self.mouse_pressed = False
-        else:
-            if not self.mouse_pressed:  # Only press the mouse button if it's currently not pressed
-                pyautogui.mouseDown()
-                self.mouse_pressed = True
-
-        # Maybe update onscreen hand position - should be merged into this class at least
-
     def __del__(self):
         self.command_queue.put(('stop', ))
+
 
 class _PresentationMode(_StandardMode):
     def __init__(self):
@@ -237,3 +235,15 @@ class _PresentationMode(_StandardMode):
         pass  # TODO
 
 # TODO make 2 classes for the control one for presentation mode and one for normal mode ( potentially one base class )
+
+
+def __init__(self):
+    self.events = SomeModule()
+    self.latest_pos = None
+
+    self.events.add_listener(
+        var = self.latest_pos,
+        callback=self.on_pos_change
+    )
+def on_pos_change(self, value):
+    print(f"new value for self.latest_pos is {value}")

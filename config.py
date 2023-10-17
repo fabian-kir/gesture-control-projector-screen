@@ -18,6 +18,8 @@ GESTURE_DETECTION_TOLERANCE = 1.83
 
 HAND_CURSOR_CLICK_DISTANCE = 250 #in px
 
+INAROW_HAND_DETECTION_FAILS = 5  # After the hand detection was x times not able to detect a hand, we expect that the hand moved out of the camera area
+
 # Overlay Style:
 MAIN_ACTIVE_COLOR = (255, 0, 0)
 MAIN_INACTIVE_COLOR = (0, 255, 255)
