@@ -1,3 +1,5 @@
+import sys
+
 import config as C
 import win32gui, win32con, win32api
 import multiprocessing
@@ -5,12 +7,27 @@ from collections import namedtuple
 from custom_utils import find_ring_intersection
 from time import sleep
 
-class ScreenOverlay(multiprocessing.Process):
+
+class ScreenOverlayProcess(multiprocessing.Process):
+    def __init__(self, data_queue: multiprocessing.Queue):
+        super().__init__()
+        self.daemon = True
+
+        self.data_queue = data_queue
+
+    def run(self):
+        overlay = _ScreenOverlay(self.data_queue)
+        overlay()
+
+
+class _ScreenOverlay:
     @staticmethod
     def WindowProc(hwnd, msg, wParam, lParam):
         if msg == win32con.WM_CLOSE:
             print("window closed")
             win32gui.PostQuitMessage(0)  # This will exit the message loop
+            win32gui.DestroyWindow(hwnd)
+            sys.exit()
             return 0
         return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
     def __init__(self, data_queue: multiprocessing.Queue):
@@ -34,7 +51,7 @@ class ScreenOverlay(multiprocessing.Process):
         class_atom = win32gui.RegisterClass(wnd_class)
 
         hwnd = win32gui.CreateWindowEx(
-            win32con.WS_EX_LAYERED | win32con.WS_EX_TOPMOST,
+            win32con.WS_EX_LAYERED | win32con.WS_EX_TOPMOST | win32con.WS_EX_TRANSPARENT,
             class_atom,
             "Layered Window",
             win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE | win32con.WS_MAXIMIZE,
@@ -46,15 +63,26 @@ class ScreenOverlay(multiprocessing.Process):
 
         win32gui.SetLayeredWindowAttributes(hwnd, self.transparent_color, 0, win32con.LWA_COLORKEY)
 
-
         return hwnd
 
-    def run(self):
+    def __call__(self):
         print("seperate process started")
+
         while True:
+            # Non-blocking check for window messages
+            has_res, msg = win32gui.PeekMessage(None, 0, 0, win32con.PM_REMOVE)
+            if has_res:  # Check if there's a message
+                win32gui.TranslateMessage(msg)
+                win32gui.DispatchMessage(msg)
+
             # get data
+            if self.data_queue.empty():
+                continue
             latest = self.data_queue.get(block=True)
 
+
+
+            print(latest)
             self.process_command(latest)
 
     def process_command(self, command: namedtuple):
@@ -67,8 +95,6 @@ class ScreenOverlay(multiprocessing.Process):
 
         match command[0], command[1]:
             case 'debug_draw', value:
-                self.fill_transparent()
-
                 self.draw()
 
             case 'highlighter_pos', value:
@@ -167,11 +193,22 @@ def debug_screen_overlay():
     from multiprocessing import Queue
 
     debug_queue = Queue()
-    overlay = ScreenOverlay(debug_queue)
+    overlay = ScreenOverlayProcess(debug_queue)
+    overlay.start()
 
-    overlay.process_command(('debug_draw', ((50, 50), 100, 3, win32api.RGB(255, 0, 0))))
+    debug_queue.put(
+        ("debug_draw", None)
+    )
 
-    win32gui.PumpMessages()
+    sleep(1)
+
+    debug_queue.put(
+        ("highlighter_pos", (200, 200))
+    )
+
+    sleep(1)
+
+    sleep(2)
 
 if __name__ == "__main__":
     debug_screen_overlay()

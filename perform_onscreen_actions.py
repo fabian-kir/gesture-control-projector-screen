@@ -3,7 +3,7 @@ import multiprocessing
 import pyautogui
 import math
 import config as C
-from filterapp import ScreenOverlay
+from filterapp import ScreenOverlayProcess
 from multiprocessing import Queue
 from queue import Full
 import warnings
@@ -103,7 +103,7 @@ class _StandardMode:
         self.is_hand_on_screen = {"left": False, "right": False}
 
         self.command_queue = Queue(maxsize=C.COMMAND_QUEUE_MAXSIZE)
-        self.overlay = ScreenOverlay(self.command_queue)
+        self.overlay = ScreenOverlayProcess(self.command_queue)
 
         self.overlay.start()
 
@@ -125,11 +125,11 @@ class _StandardMode:
         if not self.is_pos_onscreen(pos):
             self.is_hand_detected["left"] = True
             self.is_hand_on_screen["left"] = False
-            self.left_hand_pos = pos
+            self.left_hand_pos = tuple(int(a) for a in pos)
             self.update()
             return
 
-        self.left_hand_pos = (int(a) for a in pos)
+        self.left_hand_pos = tuple(int(a) for a in pos)
         self.is_hand_detected["left"] = self.is_hand_on_screen["left"] = True
         self.update()
 
@@ -145,16 +145,17 @@ class _StandardMode:
         if not self.is_pos_onscreen(pos):
             self.is_hand_detected["right"] = True
             self.is_hand_on_screen["right"] = False
-            self.right_hand_pos = pos
+            self.right_hand_pos = tuple(int(a) for a in pos)
             self.update()
             return
 
-        self.left_hand_pos = (int(a) for a in pos)
+        self.right_hand_pos = tuple(int(a) for a in pos)
         self.is_hand_detected["right"] = self.is_hand_on_screen["right"] = True
         self.update()
 
     def feed_overlay(self, commands=()):
         sending = [
+            ('debug_draw', None),
             ('highlighter_pos', self.left_hand_pos),
             ('highlighter_state', self.mouse_pressed),
             ('second_hand_pos', self.right_hand_pos)
@@ -165,7 +166,8 @@ class _StandardMode:
 
         try:
             for command in sending:
-                self.command_queue.put(command, block=False)
+                # self.command_queue.put(command, block=False)
+                pass
         except Full:
             warnings.warn("WARNING: The command Queue has run out of capacity.", UserWarning)
 
