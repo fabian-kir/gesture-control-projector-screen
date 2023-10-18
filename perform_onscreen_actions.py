@@ -96,7 +96,7 @@ class Controller:
 
 class _StandardMode:
     def __init__(self):
-        self.mouse_pressed = False
+        self.mouse_pressed = EventListener(False, bind=None) # TODO!!!
 
         self._left_hand_pos = EventListener(None, bind=self.lefthand_onchange)
         self._right_hand_pos = EventListener(None, bind=self.righthand_onchange)
@@ -179,7 +179,22 @@ class _StandardMode:
 
     def righthand_onchange(self, val):
     # right hand was moved:
+        if val is None:
+            # right hand was undetected:
+            self.right_hand_detected += 1
 
+        else:
+            # right hand was detected somewhere
+
+            # check if right hand is within radius
+            self.send_command(('second_hand_pos', val))
+            if math.dist(val, self.left_hand_pos.value) <= C.HAND_CURSOR_CLICK_DISTANCE and self.is_pos_onscreen(self.left_hand_pos.value):
+                self.mouse_pressed = True
+            else:
+                self.mouse_pressed = False
+
+    def righthanddetected_onchange(self, val):
+        # functionality for if val >= C.INAROW...
 
 
     def send_command(self, command):
