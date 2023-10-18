@@ -27,8 +27,10 @@ class Main:
                 img = camera()
                 transformed_fingertips = self.fingertip_detector(img)
 
-                self.mouse_control.update_left_hand(transformed_fingertips[0])
-                self.mouse_control.update_right_hand(transformed_fingertips[1])
+                #self.mouse_control.update_left_hand(transformed_fingertips[0])
+                #self.mouse_control.update_right_hand(transformed_fingertips[1])
+
+                self.mouse_control.update_positions(transformed_fingertips[0], transformed_fingertips[1])
 
 if __name__ == "__main__":
     print("main here")

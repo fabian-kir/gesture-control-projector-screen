@@ -99,12 +99,16 @@ class _ScreenOverlay:
                 self.draw()
 
             case 'highlighter_pos', value:
+                if value is None:
+                    return
                 self.highlighter_pos = value
 
             case 'highlighter_state', value:
                 self.highlighter_state = value
 
             case 'second_hand_pos', value:
+                if value is None:
+                    return
                 self.second_hand_pos = value
 
             case 'highlighter_visible', value:
@@ -147,13 +151,16 @@ class _ScreenOverlay:
         if self.highlighter_state and self.second_hand_pos:
             assert self.second_hand_pos[0] and self.second_hand_pos[1]  # if the code works this shouldn't be thrown ever ...
 
-            endpos = tuple(int(x) for x in (find_ring_intersection(self.second_hand_pos, self.highlighter_pos, C.HAND_CURSOR_CLICK_DISTANCE)))
-            self.draw_line(
-                start_pos=self.second_hand_pos,
-                end_pos=tuple(int(x) for x in (find_ring_intersection(self.second_hand_pos, self.highlighter_pos, C.HAND_CURSOR_CLICK_DISTANCE))),
-                color=win32api.RGB(C.SECOND_COLOR),
-                thickness=C.LINE_WIDTH
-            )
+            endpos = find_ring_intersection(self.second_hand_pos, self.highlighter_pos, C.HAND_CURSOR_CLICK_DISTANCE)
+            if endpos:
+                endpos = tuple(int(x) for x in endpos)
+
+                self.draw_line(
+                    start_pos=self.second_hand_pos,
+                    end_pos=endpos,
+                    color=win32api.RGB(*C.SECOND_COLOR),
+                    thickness=C.LINE_WIDTH
+                )
 
     def draw_ring(self, pos, radius, thickness, color):
         pos = tuple(int(a) for a in pos)
@@ -179,15 +186,15 @@ class _ScreenOverlay:
         win32gui.ReleaseDC(self.hwnd, hdc)
 
     def draw_line(self, start_pos, end_pos, thickness, color):
+        hdc = win32gui.GetDC(self.hwnd)
+
         start_pos = tuple(int(a) for a in start_pos)
         end_pos = tuple(int(a) for a in end_pos)
-
-        hdc = win32gui.GetDC(self.hwnd)
 
         brush = win32gui.CreateSolidBrush(color)
 
         win32gui.SelectObject(hdc, brush)
-        win32gui.Polyline(start_pos, end_pos)
+        win32gui.Polyline(hdc, (start_pos, end_pos))
 
         win32gui.DeleteObject(brush)
         win32gui.ReleaseDC(self.hwnd, hdc)

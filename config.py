@@ -1,4 +1,4 @@
-MODE = "standard" # ["standard", "presentation"]
+MODE = "standard2" # ["standard", "presentation"]
 DEBUG = False
 
 MONITOR = 0 # Falls mehrere Monitore an den Computer angeschlossen sind, muss diese Zahl ggf. angepasst werden
@@ -26,7 +26,7 @@ MAIN_INACTIVE_COLOR = (0, 255, 255)
 SECOND_COLOR = (0, 0, 255)
 LINE_WIDTH = 5
 
-COMMAND_QUEUE_MAXSIZE = 10
+COMMAND_QUEUE_MAXSIZE = 100000
 
 #Presentation Mode:
 PRESENTATION_ACTION_AREA_WIDTH = .15 # % amount of the screen at the left and right end (each) where next or previous slide actions are recognized
