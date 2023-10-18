@@ -24,7 +24,6 @@ class _ScreenOverlay:
     @staticmethod
     def WindowProc(hwnd, msg, wParam, lParam):
         if msg == win32con.WM_CLOSE:
-            print("window closed")
             win32gui.PostQuitMessage(0)  # This will exit the message loop
             win32gui.DestroyWindow(hwnd)
             sys.exit()
@@ -34,13 +33,14 @@ class _ScreenOverlay:
         super().__init__()
         self.data_queue = data_queue
 
-        self.highlighter_pos = (200, 200) # TODO: set to None at start
+        self.highlighter_pos = None
         self.highlighter_state = False  # False for non-clicked, True for clicked
-        self.second_hand_pos = False
-        self.highlighter_visible = True # TODO implement
+        self.second_hand_pos = None
 
         self.transparent_color = win32api.RGB(1, 1, 1)  # Example: Magenta as transparent color
         self.hwnd = self.create_window()
+
+        self.count = 0
 
     def create_window(self):
         wnd_class = win32gui.WNDCLASS()
@@ -70,6 +70,8 @@ class _ScreenOverlay:
         print("seperate process started")
 
         while True:
+            self.count += 1
+
             # Non-blocking check for window messages
             has_res, msg = win32gui.PeekMessage(None, 0, 0, win32con.PM_REMOVE)
             if has_res:  # Check if there's a message
@@ -81,10 +83,11 @@ class _ScreenOverlay:
                 continue
             latest = self.data_queue.get(block=True)
 
-
-
-            print(latest)
             self.process_command(latest)
+
+            if self.count == 100:
+                self.reapply_window_attributes()
+                self.count = 0
 
     def process_command(self, command: namedtuple):
         ''' command_template = {
@@ -99,20 +102,13 @@ class _ScreenOverlay:
                 self.draw()
 
             case 'highlighter_pos', value:
-                if value is None:
-                    return
                 self.highlighter_pos = value
 
             case 'highlighter_state', value:
-                self.highlighter_state = value
+                self.highlighter_state = bool(value)
 
             case 'second_hand_pos', value:
-                if value is None:
-                    return
                 self.second_hand_pos = value
-
-            case 'highlighter_visible', value:
-                self.highlighter_visible = bool(value)
 
             case 'stop', _:
                 raise SystemExit(f"Thread {multiprocessing.current_process().name} exited due to a stop command.")
@@ -123,6 +119,7 @@ class _ScreenOverlay:
             case _:
                 raise Exception(f"The used command in thread {multiprocessing.current_process().name} has wrong format/type")
 
+        print(command)
         self.draw()
 
     def fill_transparent(self):
@@ -138,8 +135,17 @@ class _ScreenOverlay:
         self.fill_transparent()
         # draw objects:
 
+        # draw
+        if self.second_hand_pos and self.highlighter_pos and not self.highlighter_state:
+            self.draw_line(
+                start_pos=self.second_hand_pos,
+                end_pos=self.highlighter_pos,
+                thickness=C.LINE_WIDTH,
+                color=win32api.RGB(*C.SECOND_COLOR),
+            )
+
         # draw highlighter ring:
-        if not (self.highlighter_pos is None):
+        if self.highlighter_pos:
             self.draw_ring(
                 pos=self.highlighter_pos,
                 radius=C.HAND_CURSOR_CLICK_DISTANCE,
@@ -147,20 +153,12 @@ class _ScreenOverlay:
                 thickness=C.LINE_WIDTH
             )
 
-        # second hand position highlighting
-        if self.highlighter_state and self.second_hand_pos:
-            assert self.second_hand_pos[0] and self.second_hand_pos[1]  # if the code works this shouldn't be thrown ever ...
+    def reapply_window_attributes(self):
+        exStyle = win32gui.GetWindowLong(self.hwnd, win32con.GWL_EXSTYLE)
+        exStyle |= win32con.WS_EX_TRANSPARENT
+        win32gui.SetWindowLong(self.hwnd, win32con.GWL_EXSTYLE, exStyle)
 
-            endpos = find_ring_intersection(self.second_hand_pos, self.highlighter_pos, C.HAND_CURSOR_CLICK_DISTANCE)
-            if endpos:
-                endpos = tuple(int(x) for x in endpos)
-
-                self.draw_line(
-                    start_pos=self.second_hand_pos,
-                    end_pos=endpos,
-                    color=win32api.RGB(*C.SECOND_COLOR),
-                    thickness=C.LINE_WIDTH
-                )
+        win32gui.SetLayeredWindowAttributes(self.hwnd, self.transparent_color, 0, win32con.LWA_COLORKEY)
 
     def draw_ring(self, pos, radius, thickness, color):
         pos = tuple(int(a) for a in pos)
@@ -191,12 +189,19 @@ class _ScreenOverlay:
         start_pos = tuple(int(a) for a in start_pos)
         end_pos = tuple(int(a) for a in end_pos)
 
-        brush = win32gui.CreateSolidBrush(color)
+        # Create a pen with specified color and thickness
+        pen = win32gui.CreatePen(win32con.PS_SOLID, thickness, color)
 
-        win32gui.SelectObject(hdc, brush)
-        win32gui.Polyline(hdc, (start_pos, end_pos))
+        # Select the pen into the device context
+        old_pen = win32gui.SelectObject(hdc, pen)
 
-        win32gui.DeleteObject(brush)
+        # Draw the line with the selected pen
+        win32gui.MoveToEx(hdc, start_pos[0], start_pos[1])
+        win32gui.LineTo(hdc, end_pos[0], end_pos[1])
+
+        # Clean up
+        win32gui.SelectObject(hdc, old_pen)
+        win32gui.DeleteObject(pen)
         win32gui.ReleaseDC(self.hwnd, hdc)
 
 
@@ -207,19 +212,28 @@ def debug_screen_overlay():
     overlay = ScreenOverlayProcess(debug_queue)
     overlay.start()
 
-    debug_queue.put(
-        ("debug_draw", None)
-    )
+    debug_queue.put(("highlighter_state", True))
 
     sleep(1)
 
     debug_queue.put(
-        ("highlighter_pos", (200, 200))
+        ("highlighter_pos", (100, 100))
     )
 
     sleep(1)
 
-    sleep(2)
+    debug_queue.put(("highlighter_state", False))
+
+    sleep(1)
+
+    debug_queue.put(("second_hand_pos", (700, 700)))
+    sleep(1)
+
+    debug_queue.put(("second_hand_pos", None))
+
+    sleep(1)
+
+    debug_queue.put(("stop", ))
 
 if __name__ == "__main__":
     debug_screen_overlay()

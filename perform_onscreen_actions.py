@@ -1,89 +1,18 @@
+import math
 import multiprocessing
 import queue
+import warnings
 from time import sleep
+from typing import Optional
 
 import pyautogui
-import math
-import config as C
+
 from filterapp import ScreenOverlayProcess
-from multiprocessing import Queue
-from queue import Full
-import warnings
-from custom_utils import EventListener
-from typing import Optional, Tuple
 
 pyautogui.PAUSE = 0
 
 pyautogui.FAILSAFE = False
 
-
-# class MouseController:
-#     def __init__(self):
-#         # Optionally, you can initialize some settings here
-#         self.mouse_pressed = False  # Track the state of the mouse button
-#
-#     def move_to(self, pos: tuple[int, int]):
-#         if pos is None:
-#             return
-#         # what the left hand does
-#         pyautogui.moveTo(*pos)
-#
-#     def check_user_clicked(self, pos: tuple[int, int]):
-#         cursor_pos = pyautogui.position()
-#         distance = math.dist(pos, cursor_pos)
-#
-#         if not C.PRESENTATION_MODE:
-#             if pos is None:
-#                 if self.mouse_pressed:  # Only release the mouse button if it's currently pressed
-#                     pyautogui.mouseUp()
-#                     self.mouse_pressed = False
-#                 return
-#
-#             # what the right hand does
-#             if distance > C.HAND_CURSOR_CLICK_DISTANCE:
-#                 if self.mouse_pressed:  # Only release the mouse button if it's currently pressed
-#                     pyautogui.mouseUp()
-#                     self.mouse_pressed = False
-#             else:
-#                 if not self.mouse_pressed:  # Only press the mouse button if it's currently not pressed
-#                     pyautogui.mouseDown()
-#                     self.mouse_pressed = True
-#             return
-#
-#         if C.PRESENTATION_MODE:
-#             button_pressed = False
-#             if pos is None:
-#                 button_pressed = False
-#                 return
-#
-#             # check if user performs click action
-#             if distance > C.HAND_CURSOR_CLICK_DISTANCE:
-#                 button_pressed = False
-#                 return
-#
-#             else:
-#                 # only push a keydown event if there has not already been a keydown event the frame before, to avoid pressing "next" over and over again
-#                 if not button_pressed:
-#                     if cursor_pos >=< C.MONITOR_RESOLUTION[1] * C.PRESENTATION_ACTION_AREA_HEIGHT: # TODO check if comparison goes right direction, as for now it might either be top or bottom of the screen
-#                         # check if hand is far enough on the left side during click:
-#                         if cursor_pos[0] <= C.MONITOR_RESOLUTION[0] * C.PRESENTATION_ACTION_AREA_WIDTH:
-#                             # TODO previous_slide_clicked ()
-#                             return
-#
-#                         # check if hand is far enough on the right side during click:
-#                         if cursor_pos[0] >= C.MONITOR_RESOLUTION[0] - (C.MONITOR_RESOLUTION*C.PRESENTATION_ACTION_AREA_WIDTH):
-#                             # TODO next_slide_clicked ()
-#                             return
-#
-#             return
-#
-#     def previous_slide_clicked(self):
-#         pass
-#
-#     def next_slide_clicked(self):
-#         pass
-#
-#
 
 class Controller:
     def __new__(cls, *args, **kwargs):
@@ -93,9 +22,6 @@ class Controller:
             case "presentation":
                 return _PresentationMode()
 
-            case "standard2":
-                return _StandardMode2()
-
             case _:
                 raise Exception(
                     f"The given mode {C.MODE} is not available. Please check config.py to see all available options."
@@ -103,111 +29,6 @@ class Controller:
 
 
 class _StandardMode:
-    def __init__(self):
-        self.mouse_pressed = EventListener(False, bind=self.mousepressed_onchange)
-
-        self.left_hand_pos = EventListener(None, bind=self.lefthand_onchange)
-        self.right_hand_pos = EventListener(None, bind=self.righthand_onchange)
-
-        self.left_hand_detected = EventListener(0, self.lefthanddetected_onchange)
-        self.right_hand_detected = EventListener(0, self.righthanddetected_onchange) # -1 means its detected, otherwise amount of detection fails in a row
-
-        self.command_queue = Queue(maxsize=C.COMMAND_QUEUE_MAXSIZE)
-        self.overlay = ScreenOverlayProcess(self.command_queue)
-
-        self.overlay.start()
-
-    @staticmethod
-    def is_pos_onscreen(pos) -> bool:
-        if pos[0] < 0 or pos[1] < 0 or pos[0] > C.MONITOR_RESOLUTION[0] or pos[1] > C.MONITOR_RESOLUTION[1]:
-            return False
-        return True
-
-    def lefthand_onchange(self, val: Optional[Tuple[int, int]]):
-        # hand was moved!
-        if val is None:
-            # no hand was detected
-            self.left_hand_detected.value += 1
-
-        else:
-            assert not (None in val)
-            # hand was detected somewhere
-            self.left_hand_detected.value = -1
-
-            if self.is_pos_onscreen(val):
-                # hand was detected and is on screen:
-                self.command_queue.put(('highlighter_pos', val))
-                pyautogui.moveTo(*val)
-            else:
-                # hand detected outside screen:
-                pass
-
-
-    def lefthanddetected_onchange(self, val: int):
-        # hand was new detected:
-        if val == -1:
-            self.send_command(('highlighter_visible', True))
-
-        elif val > C.INAROW_HAND_DETECTION_FAILS:
-            self.send_command(('highlighter_visible', False))
-            pyautogui.mouseUp()
-
-    def righthand_onchange(self, val: Optional[Tuple[int, int]]):
-    # right hand was moved:
-        if val is None:
-            # right hand was undetected:
-            self.right_hand_detected.value += 1
-
-        else:
-            assert not (None in val)
-
-            self.right_hand_detected.value = -1
-            # right hand was detected somewhere
-
-            if self.left_hand_pos.value and self.is_pos_onscreen(self.left_hand_pos.value):
-                # check if right hand is within radius and a left hand is also detected
-                self.send_command(('second_hand_pos', val))
-                if math.dist(val, self.left_hand_pos.value) <= C.HAND_CURSOR_CLICK_DISTANCE and self.is_pos_onscreen(self.left_hand_pos.value):
-                    self.mouse_pressed.value = True
-                else:
-                    self.mouse_pressed.value = False
-
-    def righthanddetected_onchange(self, val: int):
-        if val == -1:
-            # hand was newly detected:
-            pass
-
-        elif val >= C.INAROW_HAND_DETECTION_FAILS:
-            self.mouse_pressed.value = False
-            self.send_command(('second_hand_pos', self.left_hand_pos.value)) # this means there won't be any line drawn on the overlay
-
-    def mousepressed_onchange(self, val: bool):
-        if val:
-           pyautogui.mouseDown()
-           self.send_command(('highlighter_state', True))
-        else:
-            pyautogui.mouseUp()
-            self.send_command(('highlighter_state', False))
-
-
-    def send_command(self, command):
-        try:
-            self.command_queue.put(command)
-            return True
-        except queue.Full:
-            # return False
-            assert False  # Only for debugging TODO
-
-    def __del__(self):
-        self.command_queue.put(('stop', ))
-
-
-import config as C
-import pyautogui
-import math
-
-
-class _StandardMode2:
     def __init__(self):
         # Initialize the positions to None, indicating no detection.
         self.left_hand_pos = None
@@ -245,31 +66,27 @@ class _StandardMode2:
         left_hand_pos = self.normalize_position(left_hand_pos)
         right_hand_pos = self.normalize_position(right_hand_pos)
 
-        # Update left hand position and move the cursor
-        if left_hand_pos is not None and self.is_pos_onscreen(left_hand_pos):
-            pyautogui.moveTo(left_hand_pos[0], left_hand_pos[1])
+        # Check if there's a change in left hand position
+        if left_hand_pos != self.left_hand_pos:
             # Send the highlighter position to the overlay process
             self.send_command(('highlighter_pos', left_hand_pos))
-        else:
-            # If left hand is not detected, set highlighter position to None
-            self.send_command(('highlighter_pos', None))
 
-        # Handle detection failures for left hand
-        if left_hand_pos is None:
-            self.left_hand_fail_counter += 1
-        else:
-            self.left_hand_fail_counter = 0
             self.left_hand_pos = left_hand_pos
+            # Update left hand position and move the cursor
+            if left_hand_pos is not None and self.is_pos_onscreen(left_hand_pos):
+                pyautogui.moveTo(left_hand_pos[0], left_hand_pos[1])
 
-        # Handle detection failures for right hand
-        if right_hand_pos is None:
-            self.right_hand_fail_counter += 1
-        else:
-            self.right_hand_fail_counter = 0
-            self.right_hand_pos = right_hand_pos
-
+        # Check if there's a change in right hand position
+        if right_hand_pos != self.right_hand_pos:
             # Send the position of the right hand to the overlay process
             self.send_command(('second_hand_pos', right_hand_pos))
+
+            self.right_hand_pos = right_hand_pos
+            # Handle detection failures for right hand
+            if right_hand_pos is None:
+                self.right_hand_fail_counter += 1
+            else:
+                self.right_hand_fail_counter = 0
 
         # Check if a hand is considered undetected based on the threshold
         if self.left_hand_fail_counter >= C.INAROW_HAND_DETECTION_FAILS:
@@ -287,16 +104,19 @@ class _StandardMode2:
             if distance <= C.HAND_CURSOR_CLICK_DISTANCE:
                 if not self.mouse_pressed:
                     pyautogui.mouseDown()
-                    sleep(.1)
+                    print("mousedown")
+                    sleep(.05)
                     self.mouse_pressed = True
-                # Toggle the state of the highlighter when hands are close
-                self.send_command(('highlighter_state', True))
+                    # Toggle the state of the highlighter when hands are close
+                    self.send_command(('highlighter_state', True))  # only send on state change
             else:
                 if self.mouse_pressed:
+                    print("mouseup")
                     pyautogui.mouseUp()
                     self.mouse_pressed = False
-                # Toggle the state of the highlighter when hands are apart
-                self.send_command(('highlighter_state', False))
+
+                    # Toggle the state of the highlighter when hands are apart
+                    self.send_command(('highlighter_state', False))
 
     @staticmethod
     def is_pos_onscreen(pos) -> bool:
@@ -309,8 +129,8 @@ class _StandardMode2:
             self.command_queue.put(command)
             return True
         except queue.Full:
-            assert False
-            # return False TODO
+            warnings.warn("Command Queue is full!", UserWarning)
+            return False
 
 
 class _PresentationMode(_StandardMode):
@@ -322,7 +142,8 @@ class _PresentationMode(_StandardMode):
 
     def update(self):
         if False in (
-                list(self.is_hand_on_screen.values()) + list(self.is_hand_detected.values())):  # both hands must be detected and onscreen for anything to happen
+            list(self.is_hand_on_screen.values()) + list(
+            self.is_hand_detected.values())):  # both hands must be detected and onscreen for anything to happen
             distance = math.dist(self.left_hand_pos, self.right_hand_pos)
             if distance < C.HAND_CURSOR_CLICK_DISTANCE:
                 # Hands make a click - now check if they click on nextslide, previousslide or none of both
@@ -342,15 +163,10 @@ class _PresentationMode(_StandardMode):
     def next_slide(self):
         pass  # TODO
 
-# TODO make 2 classes for the control one for presentation mode and one for normal mode ( potentially one base class )
-
-
 
 import unittest
 import config as C
 import pyautogui
-
-from unittest.mock import patch
 
 from unittest.mock import patch
 
