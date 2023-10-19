@@ -9,3 +9,5 @@
  - [ ] Implement a presentation mode
  - [ ] For presenation mode it might make sense to use selenium, or to get it going with simulating "next" and "previous" buttons usually used for music control
  - [ ] Make sure whole application closes when Overlaywindow gets closed by User
+ - [ ] Remove pygame welcome message
+ - [ ] make sure the Oherlay makes its first call for tranparency during init, so that it's ready when we enter main loop and does not need to be created only then
