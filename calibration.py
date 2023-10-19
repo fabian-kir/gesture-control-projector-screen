@@ -26,7 +26,7 @@ class SelectCorners:
         src_img = cv2.cvtColor(src_img, cv2.COLOR_BGR2RGB)
         self.img = pyg.image.frombuffer(src_img.tostring(), src_img.shape[1::-1], "RGB")
 
-    def is_cursor_on_point(self, pos, point):
+    def is_cursor_on_point(self, pos: tuple[float, float], point: tuple[float, float]):
         """Check if the cursor is on the given point."""
         x, y = pos
         px, py = point
@@ -49,8 +49,7 @@ class SelectCorners:
             if len(self.corners) == 4:  # Connect the last point to the first point
                 pyg.draw.line(self.screen, (0, 0, 255), self.corners[-1], self.corners[0], 2)
 
-
-    def __call__(self):
+    def __call__(self) -> list[tuple[int, int], ]:
         self.screen.fill((255, 255, 255))
         self.screen.blit(self.img, self.img.get_rect())
         pyg.display.update()
@@ -86,6 +85,37 @@ class SelectCorners:
 
             pyg.display.update()
 
+
+class Transformation:
+    def __init__(self, transformation_matrix, region_of_interest, image_shape):
+        self.transformation_matrix = transformation_matrix
+        self.region_of_interest = region_of_interest
+        self.image_shape = image_shape
+
+    def transform_image(self, img):
+        return cv2.warpPerspective(img, self.transformation_matrix, C.MONITOR_RESOLUTION)
+
+    def transform_point(self, point):
+        p = np.array([point[0], point[1], 1])
+        m = self.transformation_matrix
+        res = p * m
+        return np.array([
+            sum(res[0]) / sum(res[2]),
+            sum(res[1]) / sum(res[2])
+        ])
+
+    def transform_relative(self, point):
+        transformed_point = self.transform_point(point)
+        return transformed_point / np.array(C.MONITOR_RESOLUTION)
+
+    def get_data(self, point, img):
+        return {
+            'transformed_point': self.transform_point(point),
+            'relative_position': self.transform_relative(point),
+            'transformed_image': self.transform_image(img)
+        }
+
+
 class Calibration:
     def __init__(self, camera_sources):
         self.camera_sources = camera_sources
@@ -98,7 +128,7 @@ class Calibration:
         H = self._processing(self.coordinates)
         return H
 
-    def _processing(self, coordinates): # -> surface transformation matrix
+    def _processing(self, coordinates) -> Transformation:
         camera_rect = coordinates
         screen_rect = [
             (0, 0),
@@ -162,35 +192,6 @@ class Calibration:
         return cv2.bitwise_and(image, image, mask=mask)
 
 
-class Transformation:
-    def __init__(self, transformation_matrix, region_of_interest, image_shape):
-        self.transformation_matrix = transformation_matrix
-        self.region_of_interest = region_of_interest
-        self.image_shape = image_shape
-
-    def transform_image(self, img):
-        return cv2.warpPerspective(img, self.transformation_matrix, C.MONITOR_RESOLUTION)
-
-    def transform_point(self, point):
-        p = np.array([point[0], point[1], 1])
-        m = self.transformation_matrix
-        res = p * m
-        return np.array([
-            sum(res[0]) / sum(res[2]),
-            sum(res[1]) / sum(res[2])
-        ])
-
-    def transform_relative(self, point):
-        transformed_point = self.transform_point(point)
-        return transformed_point / np.array(C.MONITOR_RESOLUTION)
-
-    def get_data(self, point, img):
-        return {
-            'transformed_point': self.transform_point(point),
-            'relative_position': self.transform_relative(point),
-            'transformed_image': self.transform_image(img)
-        }
-
 
 #https://docs.opencv.org/4.x/dc/da5/tutorial_py_drawing_functions.html
 #https://pyimagesearch.com/2021/01/19/image-masking-with-opencv/
@@ -198,7 +199,6 @@ class Transformation:
 #https://pyimagesearch.com/2015/03/09/capturing-mouse-click-events-with-python-and-opencv/
 #https://www.pygame.org/docs/tut/PygameIntro.html
 #https://stackoverflow.com/questions/19306211/opencv-cv2-image-to-pygame-image
-#https://www.khanacademy.org/math/precalculus/x9e81a4f98389efdf:matrices/x9e81a4f98389efdf:matrices-as-transformations/v/matrices-as-transformations-of-the-plane -> Explains linear transformation
 #https://de.wikipedia.org/wiki/Liste_von_Transformationen_in_der_Mathematik
 #https: // de.wikipedia.org / wiki / Drehmatrix
 #https://forum.patagames.com/posts/t501-What-Is-Transformation-Matrix-and-How-to-Use-It
