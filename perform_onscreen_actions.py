@@ -27,23 +27,17 @@ class Controller:
                     f"The given mode {C.MODE} is not available. Please check config.py to see all available options."
                 )
 
-
-class _StandardMode:
+class Mode:
     def __init__(self):
         # Initialize the positions to None, indicating no detection.
         self.left_hand_pos = None
         self.right_hand_pos = None
 
-        # Initialize mouse_pressed to False
-        self.mouse_pressed = False
-
-        # Initialize counters for consecutive detection failures.
-        self.left_hand_fail_counter = 0
-        self.right_hand_fail_counter = 0
-
         self.command_queue = multiprocessing.Queue(maxsize=C.COMMAND_QUEUE_MAXSIZE)
-        self.overlay = ScreenOverlayProcess(self.command_queue)
-        self.overlay.start()
+
+    def update_positions(self, left_hand_pos: Optional[tuple[int, int]], right_hand_pos: Optional[tuple[int, int]]):
+        self.left_hand_pos = left_hand_pos
+        self.right_hand_pos = right_hand_pos
 
     @staticmethod
     def normalize_position(pos):
@@ -51,6 +45,33 @@ class _StandardMode:
         if pos is None:
             return None
         return (int(pos[0]), int(pos[1]))
+
+    @staticmethod
+    def is_pos_onscreen(pos) -> bool:
+        if pos[0] < 0 or pos[1] < 0 or pos[0] > C.MONITOR_RESOLUTION[0] or pos[1] > C.MONITOR_RESOLUTION[1]:
+            return False
+        return True
+
+    def send_command(self, command):
+        try:
+            self.command_queue.put(command)
+            return True
+        except queue.Full:
+            warnings.warn("Command Queue is full!", UserWarning)
+            return False
+
+class _StandardMode(Mode):
+    def __init__(self):
+        super().__init__()
+        # Initialize mouse_pressed to False
+        self.mouse_pressed = False
+
+        # Initialize counters for consecutive detection failures.
+        self.left_hand_fail_counter = 0
+        self.right_hand_fail_counter = 0
+
+        self.overlay = ScreenOverlayProcess(self.command_queue)
+        self.overlay.start()
 
     def update_positions(self, left_hand_pos: Optional[tuple[int, int]], right_hand_pos: Optional[tuple[int, int]]):
         """
@@ -117,51 +138,6 @@ class _StandardMode:
 
                     # Toggle the state of the highlighter when hands are apart
                     self.send_command(('highlighter_state', False))
-
-    @staticmethod
-    def is_pos_onscreen(pos) -> bool:
-        if pos[0] < 0 or pos[1] < 0 or pos[0] > C.MONITOR_RESOLUTION[0] or pos[1] > C.MONITOR_RESOLUTION[1]:
-            return False
-        return True
-
-    def send_command(self, command):
-        try:
-            self.command_queue.put(command)
-            return True
-        except queue.Full:
-            warnings.warn("Command Queue is full!", UserWarning)
-            return False
-
-
-class _PresentationMode(_StandardMode):
-    def __init__(self):
-        super().__init__()
-
-        self.next_button_pressed = False
-        self.previous_button_pressed = False
-
-    def update(self):
-        if False in (
-            list(self.is_hand_on_screen.values()) + list(
-            self.is_hand_detected.values())):  # both hands must be detected and onscreen for anything to happen
-            distance = math.dist(self.left_hand_pos, self.right_hand_pos)
-            if distance < C.HAND_CURSOR_CLICK_DISTANCE:
-                # Hands make a click - now check if they click on nextslide, previousslide or none of both
-
-                if 0 < self.left_hand_pos[0] < C.MONITOR_RESOLUTION[0] * C.PRESENTATION_ACTION_AREA_WIDTH and \
-                        0 < self.left_hand_pos[1] < C.MONITOR_RESOLUTION[1] * C.PRESENTATION_ACTION_AREA_HEIGHT:
-                    self.previous_slide()
-
-                elif C.MONITOR_RESOLUTION[0] * (1 - C.PRESENTATION_ACTION_AREA_WIDTH) < self.left_hand_pos < \
-                        C.MONITOR_RESOLUTION[0] and \
-                        0 < self.left_hand_pos[1] < C.MONITOR_RESOLUTION[1] * C.PRESENTATION_ACTION_AREA_HEIGHT:
-                    self.next_slide()
-
-    def previous_slide(self):
-        pass  # TODO
-
-    def next_slide(self):
-        pass  # TODO
 
 
 import unittest

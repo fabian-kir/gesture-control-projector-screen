@@ -6,48 +6,89 @@ from typing import Callable
 import config as C
 
 
+import pygame as pyg
+
 class SelectCorners:
     monitor = 1
 
     def __init__(self, src_img):
         self.corners = []
+        self.dragging = None
 
         pyg.init()
 
-        #size = (screeninfo.get_monitors()[0].width, screeninfo.get_monitors()[0].height)
-        size = C.MONITOR_RESOLUTION
-        pyg.display.set_caption('Select the 4 corners --- | Oben-Links -> Unten-Links |')
-        self.screen = pyg.display.set_mode(size)
+        img_height, img_width, _ = src_img.shape
+        size = (img_width, img_height)
 
+        pyg.display.set_caption('Wählen Sie die 4 Bildecken aus --- | Oben-Links -> Unten-Links |')
+        self.screen = pyg.display.set_mode(size)
 
         src_img = cv2.cvtColor(src_img, cv2.COLOR_BGR2RGB)
         self.img = pyg.image.frombuffer(src_img.tostring(), src_img.shape[1::-1], "RGB")
 
-    def __call__(self):
-        self.screen.fill( (255, 255, 255) )
-        self.screen.blit(self.img, self.img.get_rect())
-        pyg.display.update()
+    def is_cursor_on_point(self, pos, point):
+        """Check if the cursor is on the given point."""
+        x, y = pos
+        px, py = point
+        return (px - 5 <= x <= px + 5) and (py - 5 <= y <= py + 5)
 
-        while len(self.corners) < 4:
-            for event in pyg.event.get():
-                if event.type == pyg.QUIT:
-                    raise Exception("Please press the 4 corners")
-                if event.type == pyg.MOUSEBUTTONUP:
-                    self.draw_circle(*event.pos)
-                    self.corners.append(event.pos)
-        pyg.quit()
-        return self.corners
+    def move_point(self, pos):
+        """Move the point to the new position."""
+        if self.dragging is not None:
+            self.corners[self.dragging] = pos
 
-    # ...
     def draw_circle(self, x, y):
         pyg.draw.circle(self.screen, (0, 255, 0), (x, y), 5)
         pyg.display.update()
 
+    def draw_lines(self):
+        """Draw lines between the points."""
+        if len(self.corners) >= 2:
+            for i in range(len(self.corners) - 1):
+                pyg.draw.line(self.screen, (0, 0, 255), self.corners[i], self.corners[i+1], 2)
+            if len(self.corners) == 4:  # Connect the last point to the first point
+                pyg.draw.line(self.screen, (0, 0, 255), self.corners[-1], self.corners[0], 2)
+
+
+    def __call__(self):
+        self.screen.fill((255, 255, 255))
+        self.screen.blit(self.img, self.img.get_rect())
+        pyg.display.update()
+
+        while True:
+            for event in pyg.event.get():
+                if event.type == pyg.QUIT:
+                    raise Exception("Operation Interrupted")
+                if event.type == pyg.MOUSEBUTTONDOWN:
+                    for idx, point in enumerate(self.corners):
+                        if self.is_cursor_on_point(event.pos, point):
+                            self.dragging = idx
+                            break
+                if event.type == pyg.MOUSEBUTTONUP:
+                    self.dragging = None
+                    if len(self.corners) < 4 and not any([self.is_cursor_on_point(event.pos, point) for point in self.corners]):
+                        self.draw_circle(*event.pos)
+                        self.corners.append(event.pos)
+                        self.draw_lines()
+
+                if event.type == pyg.MOUSEMOTION and self.dragging is not None:
+                    self.move_point(event.pos)
+                    self.screen.fill((255, 255, 255))
+                    self.screen.blit(self.img, self.img.get_rect())
+                    self.draw_lines()  # Add this line
+                    for point in self.corners:
+                        self.draw_circle(*point)
+
+                if event.type == pyg.KEYDOWN and event.key == pyg.K_RETURN:
+                    if len(self.corners) == 4:
+                        pyg.quit()
+                        return self.corners
+
+            pyg.display.update()
+
 class Calibration:
     def __init__(self, camera_sources):
         self.camera_sources = camera_sources
-
-        self.user_setupconfirmation()
 
     def __call__(self):
         with self.camera_sources[0] as camera:
@@ -56,10 +97,6 @@ class Calibration:
         self.coordinates = self.window()
         H = self._processing(self.coordinates)
         return H
-
-    def user_setupconfirmation(self):
-        #_ = input("Please setup the camera\nPress ENTER to continue...") #!!!
-        pass
 
     def _processing(self, coordinates): # -> surface transformation matrix
         camera_rect = coordinates

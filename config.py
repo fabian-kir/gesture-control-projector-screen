@@ -2,7 +2,7 @@ MODE = "standard" # ["standard", "presentation"]
 DEBUG = True
 
 MONITOR = 0 # Falls mehrere Monitore an den Computer angeschlossen sind, muss diese Zahl ggf. angepasst werden
-IRIUN_CAMERA_NO = 1
+IRIUN_CAMERA_NO = 0
 
 MONITOR_RESOLUTION = (3840, 2160)
 
