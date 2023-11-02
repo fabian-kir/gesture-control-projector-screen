@@ -1,4 +1,4 @@
-# gesturecontrol-projector
+# Gesture-based control of a projector screen using Python
 
 ### TODO:
  - [x] Make the overlay window work in its own thread non-blocking so that inputs from the camera get processed even when the overlay window is rendering
