@@ -3,7 +3,7 @@ import cv2
 
 import config as C
 
-class IriunCameraInput:
+class Camera:
     def __init__(self):
         with self as camera:
             _ = camera.__call__()
@@ -15,10 +15,7 @@ class IriunCameraInput:
 
     def __call__(self):
         ret, frame = self.cap.read()
-        #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         return frame
-
-    # ...
 
 
     def release(self):
@@ -27,7 +24,7 @@ class IriunCameraInput:
             self.cap = None
 
     def __enter__(self):
-        self.cap = VideoCapture(C.IRIUN_CAMERA_NO)
+        self.cap = VideoCapture(C.CAMERA_INPUT)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):

@@ -118,8 +118,6 @@ class _ScreenOverlay:
 
             case _:
                 raise Exception(f"The used command in thread {multiprocessing.current_process().name} has wrong format/type")
-
-        print(command)
         self.draw()
 
     def fill_transparent(self):

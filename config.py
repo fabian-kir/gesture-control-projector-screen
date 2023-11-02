@@ -2,11 +2,11 @@ MODE = "standard" # ["standard", "presentation"]
 DEBUG = True
 
 MONITOR = 0 # Falls mehrere Monitore an den Computer angeschlossen sind, muss diese Zahl ggf. angepasst werden
-IRIUN_CAMERA_NO = 0
+CAMERA_INPUT = 1
 
 MONITOR_RESOLUTION = (3840, 2160)
 
-GOOD_MATCH_CALIB_VAL = .35
+GOOD_MATCH_CALIB_VAL = .45
 
 ND_ARRAY_WIDTH = 8  # 2-8, higher -> better, slower
 TRESHOLD = .00001  # .1 - .00001, lower -> better, slower
@@ -16,15 +16,15 @@ GESTURE_DETECTION_CONTEXT_LEN = 12
 MINIMAL_GESTURE_DETECTION_POINTS = 4
 GESTURE_DETECTION_TOLERANCE = 1.83
 
-HAND_CURSOR_CLICK_DISTANCE = 250 #in px
+HAND_CURSOR_CLICK_DISTANCE = 375 #in px
 
-INAROW_HAND_DETECTION_FAILS = 5  # After the hand detection was x times not able to detect a hand, we expect that the hand moved out of the camera area
+INAROW_HAND_DETECTION_FAILS = 20  # After the hand detection was x times not able to detect a hand, we expect that the hand moved out of the camera area
 
 # Overlay Style:
 MAIN_ACTIVE_COLOR = (255, 0, 0)
 MAIN_INACTIVE_COLOR = (0, 255, 255)
 SECOND_COLOR = (0, 0, 255)
-LINE_WIDTH = 5
+LINE_WIDTH = 20
 
 COMMAND_QUEUE_MAXSIZE = 15
 
