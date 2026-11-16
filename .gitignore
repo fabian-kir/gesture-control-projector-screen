@@ -1,4 +1,5 @@
 /selenium/
 /venv/
+/.venv/
 /.idea/
-/__pycache__/
+__pycache__/

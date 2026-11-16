@@ -2,6 +2,8 @@ import win32gui
 import win32con
 import win32api
 
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 import config as C
 
 class LayeredWindow:

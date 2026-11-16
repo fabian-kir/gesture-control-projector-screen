@@ -5,9 +5,6 @@ from typing import Callable
 
 import config as C
 
-
-import pygame as pyg
-
 class SelectCorners:
     monitor = 1
 
@@ -24,7 +21,7 @@ class SelectCorners:
         self.screen = pyg.display.set_mode(size)
 
         src_img = cv2.cvtColor(src_img, cv2.COLOR_BGR2RGB)
-        self.img = pyg.image.frombuffer(src_img.tostring(), src_img.shape[1::-1], "RGB")
+        self.img = pyg.image.frombuffer(src_img.tobytes(), src_img.shape[1::-1], "RGB")
 
     def is_cursor_on_point(self, pos: tuple[float, float], point: tuple[float, float]):
         """Check if the cursor is on the given point."""

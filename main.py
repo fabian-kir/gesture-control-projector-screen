@@ -30,6 +30,5 @@ class Main:
                 self.mouse_control.update_positions(transformed_fingertips[0], transformed_fingertips[1])
 
 if __name__ == "__main__":
-    print("main here")
     main = Main()
     main()
